@@ -1,0 +1,20 @@
+[package]
+name = "tide-server-timing"
+version = "1.0.0"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/yoshuawuyts/tide-server-timing"
+documentation = "https://docs.rs/tide-server-timing"
+description = "Server-Timing support for Tide + Tracing"
+readme = "README.md"
+edition = "2018"
+keywords = []
+categories = []
+authors = [
+    "Yoshua Wuyts <yoshuawuyts@gmail.com>"
+]
+
+[features]
+
+[dependencies]
+
+[dev-dependencies]
