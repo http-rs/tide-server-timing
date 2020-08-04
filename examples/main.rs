@@ -1,5 +1,4 @@
-use tide::{Error, Response, Result, StatusCode};
-use tide_server_timing::Layer;
+use tide_server_timing::TimingLayer;
 use tracing_core::Level;
 use tracing_subscriber::layer::SubscriberExt;
 
@@ -9,16 +8,19 @@ async fn main() -> tide::Result<()> {
         .with_max_level(Level::TRACE)
         .finish();
 
-    let sub = sub.with(Layer::new());
+    let sub = sub.with(TimingLayer::new());
     tracing::subscriber::set_global_default(sub).expect("no global subscriber has been set");
 
-    // records an event outside of any span context:
-    tracing::info!("something happened");
-
-    let span = tracing::info_span!("my_span");
-    let _guard = span.enter();
-
-    // records an event within "my_span".
-    tracing::debug!("something happened inside my_span");
+    let mut app = tide::new();
+    app.with(tide_server_timing::Timing::new());
+    app.at("/").get(|_| async move {
+        tracing::info!("something happened");
+        let span = tracing::info_span!("my_span");
+        let _guard = span.enter();
+        tracing::debug!("something happened inside my_span");
+        let res = Ok("Hello chashu");
+        res
+    });
+    app.listen("localhost:8080").await?;
     Ok(())
 }

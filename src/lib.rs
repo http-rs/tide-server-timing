@@ -10,7 +10,8 @@
 #![deny(missing_debug_implementations, nonstandard_style)]
 #![warn(missing_docs, missing_doc_code_examples, unreachable_pub)]
 
-mod layer;
 mod middleware;
+mod timing_layer;
 
 pub use middleware::Timing;
+pub use timing_layer::{RootSpanTiming, SpanTiming, TimingLayer};
