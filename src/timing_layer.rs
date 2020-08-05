@@ -26,23 +26,17 @@ where
     S: Subscriber + for<'a> LookupSpan<'a>,
 {
     fn new_span(&self, _attrs: &Attributes<'_>, id: &Id, cx: Context<'_, S>) {
-        println!("entering {:?}", id);
         let span = cx.span(id).unwrap();
         let name = span.metadata().name();
         span.extensions_mut().insert(SpanTiming::new(name));
     }
 
-    // fn on_enter(&self, _id: &Id, _cx: Context<'_, S>) {
-    //     ()
-    // }
-
     /// On exit fold the current span's timing into its parent timing.
     fn on_exit(&self, id: &Id, cx: Context<'_, S>) {
-        println!("exiting {:?}", id);
         let span = cx.span(id).unwrap();
 
         // Don't fold the root timing into its parent.
-        if let Some(_) = span.extensions().get::<SpanRootTiming>() {
+        if span.extensions().get::<SpanRootTiming>().is_some() {
             return;
         };
 
@@ -52,10 +46,10 @@ where
             None => return,
         };
 
-        println!("has timing (id: {:?})", id);
-        // Finalize the timing.
+        // Snapshot the end time of the span.
         timing.end_timing();
 
+        // fold the current timing into its parent's timing.
         let span = cx.span(id).unwrap();
         if let Some(parent_id) = span.parent_id() {
             let parent = cx.span(parent_id).expect("parent not found");

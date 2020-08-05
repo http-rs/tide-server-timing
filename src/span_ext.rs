@@ -1,12 +1,11 @@
 use crate::TimingLayer;
-use tracing::Id;
 use tracing_subscriber::registry::{LookupSpan, Registry};
 
 // bit of a gross hack; we're casting down to a registry when we really shouldn't assume one is present.
 /// A trait ext to cast a Span down to a Registry.
 pub(crate) trait SpanExt {
     /// Take an item from the Span's typemap.
-    fn take_ext<F, T>(&self, id: Id, f: F)
+    fn take_ext<F, T>(&self, f: F)
     where
         F: FnMut(T),
         T: 'static + Send + Sync;
@@ -18,7 +17,7 @@ pub(crate) trait SpanExt {
 }
 
 impl SpanExt for tracing::Span {
-    fn take_ext<F, T: 'static + Send + Sync>(&self, trace_id: Id, mut f: F)
+    fn take_ext<F, T: 'static + Send + Sync>(&self, mut f: F)
     where
         F: FnMut(T),
     {
@@ -27,8 +26,6 @@ impl SpanExt for tracing::Span {
                 let registry = subscriber
                     .downcast_ref::<Registry>()
                     .expect("Expected a tracing-subscriber tracer with a Registry");
-
-                println!("requesting {:?}", id);
 
                 let span = registry
                     .span(&id)
@@ -51,8 +48,6 @@ impl SpanExt for tracing::Span {
                 let registry = subscriber
                     .downcast_ref::<Registry>()
                     .expect("Expected a tracing-subscriber tracer with a Registry");
-
-                println!("inserting in {:?}", id);
 
                 let span = registry
                     .span(&id)
