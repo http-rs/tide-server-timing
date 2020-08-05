@@ -24,7 +24,7 @@ impl<State: Clone + Send + Sync + 'static> tide::Middleware<State> for Timing {
         let res = async move {
             // Run the current future to completion.
             let fut = async move { next.run(req).await };
-            let span = tracing::info_span!("Tide endpoint handler");
+            let span = tracing::info_span!("tide_endpoint");
             let mut res = Instrument::instrument(fut, span).await;
 
             // Now access the trace from the store.

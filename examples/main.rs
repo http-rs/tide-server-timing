@@ -2,6 +2,10 @@ use tide_server_timing::TimingLayer;
 use tracing_core::Level;
 use tracing_subscriber::layer::SubscriberExt;
 
+use async_std::task;
+use std::time::Duration;
+use tracing_futures::Instrument;
+
 #[async_std::main]
 async fn main() -> tide::Result<()> {
     let (layer, _receiver) = TimingLayer::new();
