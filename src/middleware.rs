@@ -1,6 +1,8 @@
 use tide::{Next, Request};
 use tracing_futures::Instrument;
 
+use http_types::trace::{Metric, ServerTiming};
+
 use crate::span_ext::SpanExt;
 
 /// Middleware that captures encodes all traces in a handler as `Server-Timing` headers.
@@ -21,22 +23,35 @@ impl<State: Clone + Send + Sync + 'static> tide::Middleware<State> for Timing {
     async fn handle(&self, req: Request<State>, next: Next<'_, State>) -> tide::Result {
         let res = async move {
             // Run the current future to completion.
-            let fut = async move { Ok(next.run(req).await) };
-            let span = tracing::info_span!("tide-server-timing");
-            let res = Instrument::instrument(fut, span).await;
+            let fut = async move { next.run(req).await };
+            let span = tracing::info_span!("Tide endpoint handler");
+            let mut res = Instrument::instrument(fut, span).await;
 
             // Now access the trace from the store.
             let span = tracing::span::Span::current();
             span.take_ext(|timings: Option<crate::SpanTiming>| {
                 if let Some(timings) = timings {
-                    let timings = timings.flatten();
+                    let raw_timings = timings.flatten();
+                    let mut timings = ServerTiming::new();
+
+                    for timing in raw_timings {
+                        let name = timing.name;
+                        let dur = match timing.end_time {
+                            Some(end_time) => end_time.duration_since(timing.start_time),
+                            None => continue, // This would be the active span, which we ignore.
+                        };
+
+                        let metric = Metric::new(name.to_owned(), Some(dur), None)
+                            .expect("Invalid metric formatting");
+                        timings.push(metric);
+                    }
+                    timings.apply(&mut res);
                 }
-                // dbg!("hello", &res);
             });
             res
         }
         .instrument(tracing::trace_span!("tide-server-wrapper"))
         .await;
-        res
+        Ok(res)
     }
 }

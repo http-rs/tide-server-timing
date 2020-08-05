@@ -34,8 +34,8 @@ where
         span.extensions_mut().insert(SpanTiming::new(name));
     }
 
-    fn on_enter(&self, id: &Id, _cx: Context<'_, S>) {
-        dbg!(id);
+    fn on_enter(&self, _id: &Id, _cx: Context<'_, S>) {
+        ()
     }
 
     fn on_exit(&self, id: &Id, cx: Context<'_, S>) {
@@ -62,9 +62,9 @@ where
 /// A timing that represent a span beneath the root span.
 #[derive(Debug)]
 pub struct SpanTiming {
-    name: &'static str,
-    start_time: Instant,
-    end_time: Option<Instant>,
+    pub(crate) name: &'static str,
+    pub(crate) start_time: Instant,
+    pub(crate) end_time: Option<Instant>,
     children: Vec<Self>,
 }
 

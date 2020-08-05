@@ -30,4 +30,4 @@ http-types = { version = "2.3.0", features = ["unstable"] }
 async-std = { version = "1.6.2", features = ["attributes"] }
 
 [patch.crates-io]
-http-types = { path = "../http-types", features = ["unstable"] }
+http-types = { version = "2.3.0", path = "../http-types", features = ["unstable"] }
