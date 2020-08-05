@@ -36,9 +36,16 @@ where
     //     ()
     // }
 
+    /// On exit fold the current span's timing into its parent timing.
     fn on_exit(&self, id: &Id, cx: Context<'_, S>) {
         println!("exiting {:?}", id);
         let span = cx.span(id).unwrap();
+
+        // Don't fold the root timing into its parent.
+        if let Some(_) = span.extensions().get::<SpanRootTiming>() {
+            return;
+        };
+
         // let name = span.metadata().name();
         let mut timing = match span.extensions_mut().remove::<SpanTiming>() {
             Some(timing) => timing,
@@ -58,6 +65,10 @@ where
         }
     }
 }
+
+/// Indicated the current struct is the root struct.
+#[derive(Debug)]
+pub struct SpanRootTiming;
 
 /// A timing that represent a span beneath the root span.
 #[derive(Debug)]

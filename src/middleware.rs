@@ -22,31 +22,38 @@ impl Timing {
 impl<State: Clone + Send + Sync + 'static> tide::Middleware<State> for Timing {
     async fn handle(&self, req: Request<State>, next: Next<'_, State>) -> tide::Result {
         let res = async move {
+            // Mark the root span.
+            let span = tracing::Span::current();
+            span.insert_ext(crate::SpanRootTiming);
+
             // Run the current future to completion.
             let fut = async move { next.run(req).await };
             let span = tracing::info_span!("tide_endpoint");
+            let span_id = span
+                .id()
+                .expect("Could not find span id of span in tide-server-timing");
             let mut res = Instrument::instrument(fut, span).await;
 
             // Now access the trace from the store.
             let span = tracing::span::Span::current();
-            span.take_ext(|timings: Option<crate::SpanTiming>| {
-                if let Some(timings) = timings {
-                    let raw_timings = timings.flatten();
-                    let mut timings = ServerTiming::new();
+            span.take_ext(span_id, |timings: crate::SpanTiming| {
+                let raw_timings = timings.flatten();
+                let mut timings = ServerTiming::new();
 
-                    for timing in raw_timings {
-                        let name = timing.name;
-                        let dur = match timing.end_time {
-                            Some(end_time) => end_time.duration_since(timing.start_time),
-                            None => continue, // This would be the active span, which we ignore.
-                        };
+                for timing in raw_timings {
+                    let name = timing.name;
+                    let dur = match timing.end_time {
+                        Some(end_time) => end_time.duration_since(timing.start_time),
+                        None => continue, // This would be the active span, which we ignore.
+                    };
 
-                        let metric = Metric::new(name.to_owned(), Some(dur), None)
-                            .expect("Invalid metric formatting");
-                        timings.push(metric);
-                    }
-                    timings.apply(&mut res);
+                    // Replace whitespace in timing names.
+                    let name = name.replace(' ', "-").to_owned();
+                    let metric =
+                        Metric::new(name, Some(dur), None).expect("Invalid metric formatting");
+                    timings.push(metric);
                 }
+                timings.apply(&mut res);
             });
             res
         }

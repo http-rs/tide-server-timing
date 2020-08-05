@@ -15,4 +15,4 @@ mod span_ext;
 mod timing_layer;
 
 pub use middleware::Timing;
-pub use timing_layer::{SpanTiming, TimingLayer};
+pub use timing_layer::{SpanRootTiming, SpanTiming, TimingLayer};
