@@ -14,4 +14,4 @@ mod middleware;
 mod timing_layer;
 
 pub use middleware::Timing;
-pub use timing_layer::{RootSpanTiming, SpanTiming, TimingLayer};
+pub use timing_layer::{SpanTiming, TimingLayer};
