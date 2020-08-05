@@ -5,22 +5,19 @@ use tracing_subscriber::layer::Context;
 use tracing_subscriber::registry::LookupSpan;
 use tracing_subscriber::Layer;
 
-use async_channel::{bounded, Receiver, Sender};
-
 use std::iter::Extend;
 use std::time::Instant;
 
 /// The Tide tracing layer.
 #[derive(Debug)]
 pub struct TimingLayer {
-    sender: Sender<SpanTiming>,
+    _priv: (),
 }
 
 impl TimingLayer {
     /// Create a new instance.
-    pub fn new() -> (Self, Receiver<SpanTiming>) {
-        let (sender, receiver) = bounded(1);
-        (Self { sender }, receiver)
+    pub fn new() -> Self {
+        Self { _priv: () }
     }
 }
 
@@ -35,9 +32,9 @@ where
         span.extensions_mut().insert(SpanTiming::new(name));
     }
 
-    fn on_enter(&self, _id: &Id, _cx: Context<'_, S>) {
-        ()
-    }
+    // fn on_enter(&self, _id: &Id, _cx: Context<'_, S>) {
+    //     ()
+    // }
 
     fn on_exit(&self, id: &Id, cx: Context<'_, S>) {
         println!("exiting {:?}", id);
