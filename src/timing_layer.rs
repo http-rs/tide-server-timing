@@ -7,6 +7,7 @@ use tracing_subscriber::Layer;
 
 use async_channel::{bounded, Receiver, Sender};
 
+use std::iter::Extend;
 use std::time::Instant;
 
 /// The Tide tracing layer.
@@ -39,26 +40,21 @@ where
 
     fn on_exit(&self, id: &Id, cx: Context<'_, S>) {
         let span = cx.span(id).unwrap();
-        let name = span.metadata().name();
-        let mut timing: SpanTiming = span
-            .extensions_mut()
-            .remove()
-            .expect("timing on exit not found");
+        // let name = span.metadata().name();
+        let mut timing = match span.extensions_mut().remove::<SpanTiming>() {
+            Some(timing) => timing,
+            None => return,
+        };
 
         // Finalize the timing.
         timing.end_timing();
 
-        if name == "tide-server-timing" {
-            self.sender.try_send(timing).expect("Could not send timing");
-        } else {
-            let span = cx.span(id).unwrap();
-            if let Some(parent_id) = span.parent_id() {
-                span.extensions_mut().insert(SpanTiming::new(name));
-                let parent = cx.span(parent_id).expect("parent not found");
-                if let Some(parent_timing) = parent.extensions_mut().get_mut::<SpanTiming>() {
-                    parent_timing.children.push(timing);
-                };
-            }
+        let span = cx.span(id).unwrap();
+        if let Some(parent_id) = span.parent_id() {
+            let parent = cx.span(parent_id).expect("parent not found");
+            if let Some(parent_timing) = parent.extensions_mut().get_mut::<SpanTiming>() {
+                parent_timing.children.extend(timing.flatten());
+            };
         }
     }
 }
@@ -87,5 +83,12 @@ impl SpanTiming {
 
     fn end_timing(&mut self) {
         self.end_time = Some(Instant::now());
+    }
+
+    pub(crate) fn flatten(mut self) -> Vec<Self> {
+        let mut children = vec![];
+        std::mem::swap(&mut self.children, &mut children);
+        children.push(self);
+        children
     }
 }

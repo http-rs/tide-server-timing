@@ -11,6 +11,7 @@
 #![warn(missing_docs, missing_doc_code_examples, unreachable_pub)]
 
 mod middleware;
+mod span_ext;
 mod timing_layer;
 
 pub use middleware::Timing;

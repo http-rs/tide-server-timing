@@ -23,5 +23,11 @@ tracing = "0.1.17"
 tracing-futures = "0.2.4"
 async-channel = "1.4.0"
 
+# TODO: remove me
+http-types = { version = "2.3.0", features = ["unstable"] }
+
 [dev-dependencies]
 async-std = { version = "1.6.2", features = ["attributes"] }
+
+[patch.crates-io]
+http-types = { path = "../http-types", features = ["unstable"] }
