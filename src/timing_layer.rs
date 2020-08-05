@@ -29,6 +29,7 @@ where
     S: Subscriber + for<'a> LookupSpan<'a>,
 {
     fn new_span(&self, _attrs: &Attributes<'_>, id: &Id, cx: Context<'_, S>) {
+        println!("entering {:?}", id);
         let span = cx.span(id).unwrap();
         let name = span.metadata().name();
         span.extensions_mut().insert(SpanTiming::new(name));
@@ -39,6 +40,7 @@ where
     }
 
     fn on_exit(&self, id: &Id, cx: Context<'_, S>) {
+        println!("exiting {:?}", id);
         let span = cx.span(id).unwrap();
         // let name = span.metadata().name();
         let mut timing = match span.extensions_mut().remove::<SpanTiming>() {
@@ -46,6 +48,7 @@ where
             None => return,
         };
 
+        println!("has timing (id: {:?})", id);
         // Finalize the timing.
         timing.end_timing();
 
