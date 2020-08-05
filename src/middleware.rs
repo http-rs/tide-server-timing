@@ -29,9 +29,12 @@ impl<State: Clone + Send + Sync + 'static> tide::Middleware<State> for Timing {
             span.insert_ext(crate::SpanRootTiming);
 
             // Run the current future to completion.
-            let fut = async move { next.run(req).await };
-            let span = tracing::info_span!("tide endpoint handler");
-            let mut res = Instrument::instrument(fut, span).await;
+            let mut res = async move {
+                let res = next.run(req).await;
+                res
+            }
+            .instrument(tracing::info_span!("tide endpoint handler"))
+            .await;
 
             // Now access the trace from the store.
             let span = tracing::span::Span::current();
@@ -56,7 +59,7 @@ impl<State: Clone + Send + Sync + 'static> tide::Middleware<State> for Timing {
             });
             res
         }
-        .instrument(tracing::trace_span!("tide-server-wrapper"))
+        .instrument(tracing::info_span!("tide-server-wrapper"))
         .await;
         Ok(res)
     }
