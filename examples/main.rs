@@ -8,17 +8,23 @@ use tracing_futures::Instrument;
 
 #[async_std::main]
 async fn main() -> tide::Result<()> {
-    let (layer, _receiver) = TimingLayer::new();
     let sub = tracing_subscriber::fmt()
         .with_max_level(Level::TRACE)
-        .finish();
+        .finish()
+        .with(TimingLayer::new());
 
-    let sub = sub.with(layer);
     tracing::subscriber::set_global_default(sub).expect("no global subscriber has been set");
 
     let mut app = tide::new();
     app.with(tide_server_timing::Timing::new());
-    app.at("/").get(|_| async move { Ok("Hello chashu") });
+    app.at("/").get(|_| async move {
+        async move {
+            task::sleep(Duration::from_millis(10)).await;
+            Ok("Hello chashu")
+        }
+        .instrument(tracing::info_span!("soup"))
+        .await
+    });
     app.listen("localhost:8080").await?;
     Ok(())
 }
