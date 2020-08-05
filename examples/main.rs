@@ -22,7 +22,7 @@ async fn main() -> tide::Result<()> {
             task::sleep(Duration::from_millis(10)).await;
             Ok("Hello chashu")
         }
-        .instrument(tracing::info_span!("soup"))
+        .instrument(tracing::info_span!("my cool span"))
         .await
     });
     app.listen("localhost:8080").await?;

@@ -30,7 +30,7 @@ impl<State: Clone + Send + Sync + 'static> tide::Middleware<State> for Timing {
 
             // Run the current future to completion.
             let fut = async move { next.run(req).await };
-            let span = tracing::info_span!("tide_endpoint");
+            let span = tracing::info_span!("tide endpoint handler");
             let mut res = Instrument::instrument(fut, span).await;
 
             // Now access the trace from the store.
@@ -40,16 +40,16 @@ impl<State: Clone + Send + Sync + 'static> tide::Middleware<State> for Timing {
                 let mut timings = ServerTiming::new();
 
                 for timing in raw_timings {
-                    let name = timing.name;
                     let dur = match timing.end_time {
                         Some(end_time) => end_time.duration_since(timing.start_time),
                         None => continue, // This would be the active span, which we ignore.
                     };
 
-                    // Replace whitespace in timing names.
-                    let name = name.replace(' ', "-").to_owned();
-                    let metric =
-                        Metric::new(name, Some(dur), None).expect("Invalid metric formatting");
+                    let name = timing.id.into_u64().to_string();
+                    let desc = format!("{} ({})", timing.span_name, timing.target);
+
+                    let metric = Metric::new(name, Some(dur), Some(desc))
+                        .expect("Invalid metric formatting");
                     timings.push(metric);
                 }
                 timings.apply(&mut res);

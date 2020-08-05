@@ -27,8 +27,10 @@ where
 {
     fn new_span(&self, _attrs: &Attributes<'_>, id: &Id, cx: Context<'_, S>) {
         let span = cx.span(id).unwrap();
-        let name = span.metadata().name();
-        span.extensions_mut().insert(SpanTiming::new(name));
+        let meta = span.metadata();
+        let id = span.id();
+        let timing = SpanTiming::new(id, meta.name(), meta.target());
+        span.extensions_mut().insert(timing);
     }
 
     /// On exit fold the current span's timing into its parent timing.
@@ -67,7 +69,9 @@ pub struct SpanRootTiming;
 /// A timing that represent a span beneath the root span.
 #[derive(Debug)]
 pub struct SpanTiming {
-    pub(crate) name: &'static str,
+    pub(crate) target: &'static str,
+    pub(crate) id: Id,
+    pub(crate) span_name: &'static str,
     pub(crate) start_time: Instant,
     pub(crate) end_time: Option<Instant>,
     children: Vec<Self>,
@@ -77,11 +81,13 @@ pub struct SpanTiming {
 // struct RootSpanTiming {}
 
 impl SpanTiming {
-    fn new(name: &'static str) -> Self {
+    fn new(id: Id, span_name: &'static str, target: &'static str) -> Self {
         Self {
             start_time: Instant::now(),
             end_time: None,
-            name,
+            id,
+            span_name,
+            target,
             children: vec![],
         }
     }
