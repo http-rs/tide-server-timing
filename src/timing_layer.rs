@@ -1,27 +1,85 @@
 use tracing_core::span::{Attributes, Id};
-use tracing_core::Subscriber;
+use tracing_core::{Dispatch, Subscriber};
 
 use tracing_subscriber::layer::Context;
 use tracing_subscriber::registry::LookupSpan;
 use tracing_subscriber::Layer;
 
 use std::iter::Extend;
-use std::time::Instant;
+use std::{any::TypeId, marker::PhantomData, time::Instant};
 
-/// The Tide tracing layer.
-#[derive(Debug)]
-pub struct TimingLayer {
-    _priv: (),
+// this function "remembers" the types of the subscriber and the formatter,
+// so that we can downcast to something aware of them without knowing those
+// types at the callsite.
+pub(crate) struct WithContext {
+    set: fn(&Dispatch, &Id, SpanRootTiming),
+    take: fn(&Dispatch, &Id, f: &mut dyn FnMut(SpanTiming)),
 }
 
-impl TimingLayer {
-    /// Create a new instance.
-    pub fn new() -> Self {
-        Self { _priv: () }
+impl WithContext {
+    pub(crate) fn set<'a>(&self, dispatch: &'a Dispatch, id: &Id, value: SpanRootTiming) {
+        (self.set)(dispatch, id, value)
+    }
+
+    pub(crate) fn take<'a>(&self, dispatch: &'a Dispatch, id: &Id, f: &mut dyn FnMut(SpanTiming)) {
+        (self.take)(dispatch, id, f)
     }
 }
 
-impl<S> Layer<S> for TimingLayer
+/// The Tide tracing layer.
+#[allow(missing_debug_implementations)]
+pub struct TimingLayer<S> {
+    ctx: WithContext,
+    _subscriber: PhantomData<fn(S)>,
+    _priv: (),
+}
+
+impl<S> TimingLayer<S>
+where
+    S: Subscriber + for<'span> LookupSpan<'span>,
+{
+    /// Create a new instance.
+    pub fn new() -> Self {
+        let ctx = WithContext {
+            set: Self::set_timing,
+            take: Self::take_timing,
+        };
+
+        Self {
+            ctx,
+            _subscriber: PhantomData,
+            _priv: (),
+        }
+    }
+
+    fn set_timing(dispatch: &Dispatch, id: &Id, timing: SpanRootTiming) {
+        let subscriber = dispatch
+            .downcast_ref::<S>()
+            .expect("subscriber should downcast to expected type; this is a bug!");
+        let span = subscriber
+            .span(id)
+            .expect("registry should have a span for the current ID");
+
+        let mut extensions = span.extensions_mut();
+        extensions.insert(timing);
+    }
+
+    fn take_timing(dispatch: &Dispatch, id: &Id, f: &mut dyn FnMut(SpanTiming)) {
+        let subscriber = dispatch
+            .downcast_ref::<S>()
+            .expect("subscriber should downcast to expected type; this is a bug!");
+        let span = subscriber
+            .span(id)
+            .expect("registry should have a span for the current ID");
+
+        let mut extensions = span.extensions_mut();
+        if let Some(value) = extensions.remove::<SpanTiming>() {
+            f(value);
+        }
+    }
+}
+
+impl<S> Layer<S> for TimingLayer<S>
 where
     S: Subscriber + for<'a> LookupSpan<'a>,
 {
@@ -58,6 +116,14 @@ where
             if let Some(parent_timing) = parent.extensions_mut().get_mut::<SpanTiming>() {
                 parent_timing.children.extend(timing.flatten());
             };
+        }
+    }
+
+    unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
+        match id {
+            id if id == TypeId::of::<Self>() => Some(self as *const _ as *const ()),
+            id if id == TypeId::of::<WithContext>() => Some(&self.ctx as *const _ as *const ()),
+            _ => None,
         }
     }
 }

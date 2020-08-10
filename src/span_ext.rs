@@ -1,60 +1,32 @@
-use crate::TimingLayer;
-use tracing_subscriber::registry::{LookupSpan, Registry};
+use crate::{timing_layer::WithContext, SpanRootTiming, SpanTiming};
 
-// bit of a gross hack; we're casting down to a registry when we really shouldn't assume one is present.
 /// A trait ext to cast a Span down to a Registry.
 pub(crate) trait SpanExt {
     /// Take an item from the Span's typemap.
-    fn take_ext<F, T>(&self, f: F)
+    fn take_ext<F>(&self, f: F)
     where
-        F: FnMut(T),
-        T: 'static + Send + Sync;
+        F: FnMut(SpanTiming);
 
-    /// Insert an item into the Span's typemap.
-    fn insert_ext<T>(&self, item: T)
-    where
-        T: 'static + Send + Sync;
+    /// Insert a SpanRootTiming into the Span's typemap.
+    fn insert_ext(&self, item: SpanRootTiming);
 }
 
 impl SpanExt for tracing::Span {
-    fn take_ext<F, T: 'static + Send + Sync>(&self, mut f: F)
+    fn take_ext<F>(&self, mut f: F)
     where
-        F: FnMut(T),
+        F: FnMut(SpanTiming),
     {
         self.with_subscriber(|(id, subscriber)| {
-            if subscriber.downcast_ref::<TimingLayer>().is_some() {
-                let registry = subscriber
-                    .downcast_ref::<Registry>()
-                    .expect("Expected a tracing-subscriber tracer with a Registry");
-
-                let span = registry
-                    .span(&id)
-                    .expect("in new_span but span does not exist");
-
-                let mut extensions = span.extensions_mut();
-                if let Some(value) = extensions.remove::<T>() {
-                    f(value);
-                }
+            if let Some(ctx) = subscriber.downcast_ref::<WithContext>() {
+                ctx.take(subscriber, id, &mut f)
             }
         });
     }
 
-    fn insert_ext<T>(&self, item: T)
-    where
-        T: 'static + Send + Sync,
-    {
+    fn insert_ext(&self, item: SpanRootTiming) {
         self.with_subscriber(|(id, subscriber)| {
-            if subscriber.downcast_ref::<TimingLayer>().is_some() {
-                let registry = subscriber
-                    .downcast_ref::<Registry>()
-                    .expect("Expected a tracing-subscriber tracer with a Registry");
-
-                let span = registry
-                    .span(&id)
-                    .expect("in new_span but span does not exist");
-
-                let mut extensions = span.extensions_mut();
-                extensions.insert(item);
+            if let Some(ctx) = subscriber.downcast_ref::<WithContext>() {
+                ctx.set(subscriber, id, item)
             }
         });
     }
