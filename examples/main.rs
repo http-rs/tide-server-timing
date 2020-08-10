@@ -1,4 +1,4 @@
-use tide_server_timing::TimingLayer;
+use tide_server_timing::{TimingLayer, TimingMiddleware};
 use tracing_core::Level;
 use tracing_subscriber::layer::SubscriberExt;
 
@@ -16,7 +16,7 @@ async fn main() -> tide::Result<()> {
     tracing::subscriber::set_global_default(sub).expect("no global subscriber has been set");
 
     let mut app = tide::new();
-    app.with(tide_server_timing::Timing::new());
+    app.with(TimingMiddleware::new());
     app.at("/").get(|_| async move {
         async move {
             task::sleep(Duration::from_millis(10)).await;

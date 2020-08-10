@@ -7,11 +7,11 @@ use crate::span_ext::SpanExt;
 
 /// Middleware that captures encodes all traces in a handler as `Server-Timing` headers.
 #[derive(Debug)]
-pub struct Timing {
+pub struct TimingMiddleware {
     _priv: (),
 }
 
-impl Timing {
+impl TimingMiddleware {
     /// Create a new instance of `Timing`.
     pub fn new() -> Self {
         Self { _priv: () }
@@ -19,7 +19,7 @@ impl Timing {
 }
 
 #[tide::utils::async_trait]
-impl<State: Clone + Send + Sync + 'static> tide::Middleware<State> for Timing {
+impl<State: Clone + Send + Sync + 'static> tide::Middleware<State> for TimingMiddleware {
     async fn handle(&self, req: Request<State>, next: Next<'_, State>) -> tide::Result {
         // Create a fake span to guarantee we're always operating in a unique span.
         // TODO: We may not need this.
