@@ -1,7 +1,7 @@
 <h1 align="center">tide-server-timing</h1>
 <div align="center">
   <strong>
-    Experimental Server-Timing support for [Tide](https://docs.rs/tide) + [Tracing](https://docs.rs/tracing).
+    Experimental Server-Timing support for <a href="https://docs.rs/tide">Tide</a> + <a href="https://docs.rs/tracing">Tracing</a>
   </strong>
 </div>
 
