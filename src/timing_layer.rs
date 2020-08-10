@@ -119,7 +119,6 @@ where
         }
     }
 
-    #[allow(unsafe_code)]
     unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
         match id {
             id if id == TypeId::of::<Self>() => Some(self as *const _ as *const ()),
