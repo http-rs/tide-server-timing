@@ -26,7 +26,7 @@ impl WithContext {
     }
 }
 
-/// The Tide tracing layer.
+/// A subscriber for `tracing` that encodes metadata for the Tide middleware to read out.
 #[allow(missing_debug_implementations)]
 pub struct TimingLayer<S> {
     ctx: WithContext,
@@ -130,11 +130,11 @@ where
 
 /// Indicated the current struct is the root struct.
 #[derive(Debug)]
-pub struct SpanRootTiming;
+pub(crate) struct SpanRootTiming;
 
 /// A timing that represent a span beneath the root span.
 #[derive(Debug)]
-pub struct SpanTiming {
+pub(crate) struct SpanTiming {
     pub(crate) target: &'static str,
     pub(crate) id: Id,
     pub(crate) span_name: &'static str,

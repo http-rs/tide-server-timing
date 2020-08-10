@@ -1,7 +1,7 @@
 <h1 align="center">tide-server-timing</h1>
 <div align="center">
   <strong>
-    Server-Timing support for Tide + Tracing
+    Experimental Server-Timing support for [Tide](https://docs.rs/tide) + [Tracing](https://docs.rs/tracing).
   </strong>
 </div>
 
@@ -45,6 +45,12 @@
 ```sh
 $ cargo add tide-server-timing
 ```
+
+## Acknowledgements
+
+This work has been sponsored by [Prisma](https://www.prisma.io/), and
+wouldn't have been possible without the guidance and contributions of [David
+Barsky](https://github.com/davidbarsky/).
 
 ## Safety
 This crate implements an unsafe downcast method that's been manually verified
