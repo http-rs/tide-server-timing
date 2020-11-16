@@ -1,4 +1,5 @@
 use tide::{Next, Request};
+use tracing::Span;
 use tracing_futures::Instrument;
 
 use http_types::trace::{Metric, ServerTiming};
@@ -23,15 +24,18 @@ impl<State: Clone + Send + Sync + 'static> tide::Middleware<State> for TimingMid
     async fn handle(&self, req: Request<State>, next: Next<'_, State>) -> tide::Result {
         // Create a fake span to guarantee we're always operating in a unique span.
         // TODO: We may not need this.
-        let res = async move {
+        let fut = async move {
             // Mark the root span.
             let span = tracing::Span::current();
             span.insert_ext(crate::SpanRootTiming);
 
+            let curr = Span::current();
+            let values = curr.attributes.values();
+
             // Run the current future to completion.
-            let mut res = async move { next.run(req).await }
-                .instrument(tracing::info_span!("tide endpoint handler"))
-                .await;
+            let fut = async move { next.run(req).await };
+            let span = tracing::info_span!("tide endpoint handler");
+            let mut res = fut.instrument(span).await;
 
             // Now access the trace from the store.
             let span = tracing::span::Span::current();
@@ -55,9 +59,10 @@ impl<State: Clone + Send + Sync + 'static> tide::Middleware<State> for TimingMid
                 timings.apply(&mut res);
             });
             res
-        }
-        .instrument(tracing::info_span!("tide-server-wrapper"))
-        .await;
+        };
+
+        let span = tracing::info_span!("tide-server-wrapper");
+        let res = fut.instrument(span).await;
         Ok(res)
     }
 }
