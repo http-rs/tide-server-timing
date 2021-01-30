@@ -16,7 +16,7 @@ authors = [
 [features]
 
 [dependencies]
-tide = { version = "0.15.0", default-features = false, features = ["async-h1"] }
+tide = { version = "0.16.0", default-features = false, features = ["async-h1"] }
 tracing-subscriber = "0.2.15"
 tracing-core = "0.1.17"
 tracing = "0.1.21"
